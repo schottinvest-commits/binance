@@ -1,0 +1,31 @@
+// Vercel Serverless Function (Node.js) – Proxy Binance
+export default async function handler(req, res) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const p = url.pathname.replace('/api', ''); // ex: /binance/ticker24
+  const search = url.search || '';
+
+  // endpoints supportés
+  let target = null;
+  if (p === '/binance/ticker24') target = 'https://api.binance.com/api/v3/ticker/24hr' + search;
+  else if (p === '/binance/klines') target = 'https://api.binance.com/api/v3/klines' + search;
+  else if (p === '/binance/price') target = 'https://api.binance.com/api/v3/ticker/price' + search;
+
+  if (!target) return res.status(404).json({ error: 'not found' });
+
+  try {
+    const r = await fetch(target, { headers: { 'accept': 'application/json' } });
+    const text = await r.text();
+    res
+      .status(r.status)
+      .setHeader('content-type', r.headers.get('content-type') || 'application/json')
+      .send(text);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}
